@@ -1,0 +1,9 @@
+[package]
+name = "status_lights_neo_trinkey"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+status_lights_messages = { path = "../status_lights_messages" }
