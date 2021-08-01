@@ -1,2 +1,0 @@
-[workspace]
-members = ["status_lights_cli", "status_lights_messages", "status_lights_neo_trinkey"]
