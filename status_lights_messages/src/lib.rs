@@ -21,26 +21,19 @@
 
 #![no_std]
 
-// const EMPTY_MESSAGE: [u8; 8] = [0; 8];
-//
-// macro_rules! raw_message {
-//     ($bytes:tt) => {
-//         $bytes.iter().chain(iter::repeat(&0)).take(8).collect()
-//     }
-// }
-
 type RawMessage = [u8; 8];
 
 use core::convert::TryFrom;
 
+#[cfg_attr(test, derive(PartialEq, Debug))]
 pub struct VersionNumber {
-    major: u8,
-    minor: u8,
-    patch: u8,
+    pub major: u8,
+    pub minor: u8,
+    pub patch: u8,
 }
 
 impl VersionNumber {
-    fn new(major: u8, minor: u8, patch: u8) -> VersionNumber {
+    pub fn new(major: u8, minor: u8, patch: u8) -> VersionNumber {
         VersionNumber {
             major,
             minor,
@@ -49,35 +42,57 @@ impl VersionNumber {
     }
 }
 
+#[cfg_attr(test, derive(PartialEq, Debug))]
 pub struct LedColor {
-    led: u8,
-    red: u8,
-    green: u8,
-    blue: u8,
+    pub led: u8,
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
 }
 
+impl LedColor {
+    pub fn new(led: u8, red: u8, green: u8, blue: u8) -> LedColor {
+        LedColor {
+            led,
+            red,
+            green,
+            blue,
+        }
+    }
+}
+
+#[cfg_attr(test, derive(PartialEq, Debug))]
 pub struct LedColorTimed {
-    led: u8,
-    red: u8,
-    green: u8,
-    blue: u8,
-    seconds: u8,
+    pub led: u8,
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+    pub seconds: u8,
 }
 
+impl LedColorTimed {
+    pub fn new(led: u8, red: u8, green: u8, blue: u8, seconds: u8) -> LedColorTimed {
+        LedColorTimed {
+            led,
+            red,
+            green,
+            blue,
+            seconds,
+        }
+    }
+}
+
+#[cfg_attr(test, derive(PartialEq, Debug))]
 #[non_exhaustive]
 pub enum Message {
     VersionRequest,
     VersionResponse(VersionNumber),
 
     BackgroundRequest(LedColor),
-    BackgroundResponse {
-        error_code: u8,
-    },
+    BackgroundResponse { error_code: u8 },
 
     ForegroundRequest(LedColorTimed),
-    ForegroundResponse {
-        error_code: u8,
-    },
+    ForegroundResponse { error_code: u8 },
 }
 
 impl Message {
@@ -94,35 +109,87 @@ impl Message {
 
     pub fn to_bytes(&self) -> RawMessage {
         match self {
-            Message::VersionRequest => {
-                [self.get_id(), 0, 0, 0, 0, 0, 0, 0]
-            }
-            Message::VersionResponse(v) => {
-                [self.get_id(), v.major, v.minor, v.patch, 0, 0, 0, 0]
-            }
-            Message::BackgroundRequest(led) => {
-                [self.get_id(), led.led, led.red, led.green, led.blue, 0, 0, 0]
-            }
-            Message::BackgroundResponse { error_code } => {
+            Self::VersionRequest => [self.get_id(), 0, 0, 0, 0, 0, 0, 0],
+            Self::VersionResponse(v) => [self.get_id(), v.major, v.minor, v.patch, 0, 0, 0, 0],
+            Self::BackgroundRequest(led) => [
+                self.get_id(),
+                led.led,
+                led.red,
+                led.green,
+                led.blue,
+                0,
+                0,
+                0,
+            ],
+            Self::BackgroundResponse { error_code } => {
                 [self.get_id(), *error_code, 0, 0, 0, 0, 0, 0]
             }
-            Message::ForegroundRequest(led) => {
-                [self.get_id(), led.led, led.red, led.green, led.blue, led.seconds, 0, 0]
-            }
-            Message::ForegroundResponse { error_code } => {
+            Self::ForegroundRequest(led) => [
+                self.get_id(),
+                led.led,
+                led.red,
+                led.green,
+                led.blue,
+                led.seconds,
+                0,
+                0,
+            ],
+            Self::ForegroundResponse { error_code } => {
                 [self.get_id(), *error_code, 0, 0, 0, 0, 0, 0]
             }
         }
     }
 }
 
+#[cfg_attr(test, derive(PartialEq, Debug))]
+pub enum MessageError {
+    EmptyMessage,
+    InvalidMessageId(u8),
+    InvalidMessageForId(u8, RawMessage),
+}
+
+impl TryFrom<RawMessage> for Message {
+    type Error = MessageError;
+
+    fn try_from(value: RawMessage) -> Result<Self, Self::Error> {
+        match value[0] {
+            1 => Ok(Self::VersionRequest),
+            2 => Ok(Self::VersionResponse(VersionNumber::new(
+                value[1], value[2], value[3],
+            ))),
+            x => Err(MessageError::InvalidMessageId(x)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::Message;
+    use crate::{Message, VersionNumber};
+    use core::convert::TryFrom;
 
     #[test]
-    fn test_version_request() {
+    fn test_version_request_to_bytes() {
         let message = Message::VersionRequest;
         assert_eq!(message.to_bytes(), [1, 0, 0, 0, 0, 0, 0, 0])
+    }
+
+    #[test]
+    fn test_version_request_from_bytes() {
+        let raw_message: [u8; 8] = [1, 0, 0, 0, 0, 0, 0, 0];
+        let message = Message::try_from(raw_message).unwrap();
+        assert_eq!(message, Message::VersionRequest)
+    }
+
+    #[test]
+    fn test_version_response_to_bytes() {
+        let message = Message::VersionResponse(VersionNumber::new(3, 4, 5));
+        assert_eq!(message.to_bytes(), [2, 3, 4, 5, 0, 0, 0, 0])
+    }
+
+    #[test]
+    fn test_version_response_from_bytes() {
+        let raw_message: [u8; 8] = [2, 3, 4, 5, 0, 0, 0, 0];
+        let message = Message::try_from(raw_message).unwrap();
+        assert_eq!(message, Message::VersionResponse(VersionNumber::new(3, 4, 5)))
     }
 }
