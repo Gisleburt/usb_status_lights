@@ -6,8 +6,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-neo_trinkey = { path = "../../atsamd/boards/neo_trinkey" }
+cortex-m = "0.6"
+cortex-m-rt = "0.6.15"
+neo_trinkey = { path = "../../atsamd/boards/neo_trinkey", features = ["usb"] }
 panic-halt = "0.2.0"
 status_lights_messages = { path = "../status_lights_messages" }
 smart-leds = "0.3.0"
+usb-device = "0.2"
+usbd-serial = "0.1"
 ws2812-timer-delay = { version = "0.3.0", features = ["slow"] }

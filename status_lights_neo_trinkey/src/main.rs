@@ -2,23 +2,34 @@
 #![no_main]
 
 use neo_trinkey as bsp;
+use cortex_m::peripheral::NVIC;
 use panic_halt as _;
+use usb_device::bus::UsbBusAllocator;
+use usb_device::prelude::*;
+use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
 use bsp::entry;
 use bsp::hal;
 use hal::clock::GenericClockController;
 use hal::delay::Delay;
-use hal::pac::{CorePeripherals, Peripherals};
+use hal::pac::{interrupt, CorePeripherals, Peripherals};
 use hal::prelude::*;
 use hal::timer::TimerCounter;
+use hal::usb::UsbBus;
+
 
 use smart_leds::{hsv::RGB8, SmartLedsWrite};
 use ws2812_timer_delay::Ws2812;
+use status_lights_messages::{DEVICE_MANUFACTURER, DEVICE_PRODUCT};
+
+static mut USB_ALLOCATOR: Option<UsbBusAllocator<UsbBus>> = None;
+static mut USB_BUS: Option<UsbDevice<UsbBus>> = None;
+static mut USB_SERIAL: Option<SerialPort<UsbBus>> = None;
 
 #[entry]
 fn main() -> ! {
     let mut peripherals = Peripherals::take().unwrap();
-    let core = CorePeripherals::take().unwrap();
+    let mut core = CorePeripherals::take().unwrap();
     let mut clocks = GenericClockController::with_internal_32kosc(
         peripherals.GCLK,
         &mut peripherals.PM,
@@ -46,10 +57,65 @@ fn main() -> ! {
         RGB8::new(2, 2, 2),
     ];
 
+    let bus_allocator = unsafe {
+        USB_ALLOCATOR = Some(bsp::usb_allocator(
+            peripherals.USB,
+            &mut clocks,
+            &mut peripherals.PM,
+            pins.usb_dm,
+            pins.usb_dp,
+        ));
+        USB_ALLOCATOR.as_ref().unwrap()
+    };
+
+    unsafe {
+        USB_SERIAL = Some(SerialPort::new(&bus_allocator));
+        USB_BUS = Some(
+            UsbDeviceBuilder::new(&bus_allocator, UsbVidPid(0x0, 0x0))
+                .manufacturer(DEVICE_MANUFACTURER)
+                .product(DEVICE_PRODUCT)
+                .serial_number("Gisleburt Neo Trinkey Status Lights")
+                .device_class(USB_CLASS_CDC)
+                .build(),
+        );
+    }
+
+    unsafe {
+        core.NVIC.set_priority(interrupt::USB, 1);
+        NVIC::unmask(interrupt::USB);
+    }
+
     loop {
         ws2812.write(off.iter().cloned()).unwrap();
         delay.delay_ms(500u16);
         ws2812.write(on.iter().cloned()).unwrap();
         delay.delay_ms(500u16);
     }
+}
+
+fn poll_usb() {
+    unsafe {
+        USB_BUS.as_mut().map(|usb_dev| {
+            USB_SERIAL.as_mut().map(|serial| {
+                usb_dev.poll(&mut [serial]);
+                let mut buf = [0u8; 64];
+
+                if let Ok(count) = serial.read(&mut buf) {
+                    for (i, c) in buf.iter().enumerate() {
+                        if i >= count {
+                            break;
+                        }
+                        serial.write("Received: ".as_bytes()).ok();
+                        serial.write(&[c.clone()]).ok();
+                        serial.write("\r\n".as_bytes()).ok();
+                    }
+                };
+            });
+        });
+    };
+}
+
+#[interrupt]
+fn USB() {
+    poll_usb();
 }

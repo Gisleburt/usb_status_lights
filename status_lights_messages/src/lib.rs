@@ -18,12 +18,13 @@
 //! 4 is the major version
 //! 5 is the minor version
 //! 6 is the patch version
-
 #![no_std]
 
 type RawMessage = [u8; 8];
 
-use core::convert::TryFrom;
+
+pub const DEVICE_MANUFACTURER: &str = "Gisleburt";
+pub const DEVICE_PRODUCT: &str = "Status Lights";
 
 #[cfg_attr(test, derive(PartialEq, Debug))]
 pub struct VersionNumber {
