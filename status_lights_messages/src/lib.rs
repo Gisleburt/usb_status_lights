@@ -20,6 +20,8 @@
 //! 6 is the patch version
 #![no_std]
 
+use core::convert::TryFrom;
+
 type RawMessage = [u8; 8];
 
 
@@ -159,13 +161,17 @@ impl TryFrom<RawMessage> for Message {
                 value[1], value[2], value[3],
             ))),
             3 => Ok(Self::BackgroundRequest(LedColor::new(
-                value[1], value[2], value[3], value[4]
+                value[1], value[2], value[3], value[4],
             ))),
-            4 => Ok(Self::BackgroundResponse { error_code: value[1] }),
+            4 => Ok(Self::BackgroundResponse {
+                error_code: value[1],
+            }),
             5 => Ok(Self::ForegroundRequest(LedColorTimed::new(
                 value[1], value[2], value[3], value[4], value[5],
             ))),
-            6 => Ok(Self::ForegroundResponse { error_code: value[1] }),
+            6 => Ok(Self::ForegroundResponse {
+                error_code: value[1],
+            }),
             x => Err(MessageError::InvalidMessageId(x)),
         }
     }
@@ -198,7 +204,10 @@ mod test {
     fn test_version_response_from_bytes() {
         let raw_message: [u8; 8] = [2, 3, 4, 5, 0, 0, 0, 0];
         let message = Message::try_from(raw_message).unwrap();
-        assert_eq!(message, Message::VersionResponse(VersionNumber::new(3, 4, 5)));
+        assert_eq!(
+            message,
+            Message::VersionResponse(VersionNumber::new(3, 4, 5))
+        );
     }
 
     #[test]
@@ -211,7 +220,10 @@ mod test {
     fn test_background_request_from_bytes() {
         let raw_message: [u8; 8] = [3, 1, 255, 255, 255, 0, 0, 0];
         let message = Message::try_from(raw_message).unwrap();
-        assert_eq!(message, Message::BackgroundRequest(LedColor::new(1, 255, 255, 255)));
+        assert_eq!(
+            message,
+            Message::BackgroundRequest(LedColor::new(1, 255, 255, 255))
+        );
     }
 
     #[test]
@@ -229,17 +241,18 @@ mod test {
 
     #[test]
     fn test_foreground_request_to_bytes() {
-
         let message = Message::ForegroundRequest(LedColorTimed::new(1, 255, 255, 255, 10));
         assert_eq!(message.to_bytes(), [5, 1, 255, 255, 255, 10, 0, 0]);
     }
 
     #[test]
     fn test_foreground_request_from_bytes() {
-
         let raw_message: [u8; 8] = [5, 1, 255, 255, 255, 10, 0, 0];
         let message = Message::try_from(raw_message).unwrap();
-        assert_eq!(message, Message::ForegroundRequest(LedColorTimed::new(1, 255, 255, 255, 10)));
+        assert_eq!(
+            message,
+            Message::ForegroundRequest(LedColorTimed::new(1, 255, 255, 255, 10))
+        );
     }
 
     #[test]
@@ -250,10 +263,8 @@ mod test {
 
     #[test]
     fn test_foreground_response_from_bytes() {
-
         let raw_message: [u8; 8] = [6, 101, 0, 0, 0, 0, 0, 0];
         let message = Message::try_from(raw_message).unwrap();
         assert_eq!(message, Message::ForegroundResponse { error_code: 101 });
     }
-
 }
