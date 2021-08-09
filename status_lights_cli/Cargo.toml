@@ -8,3 +8,4 @@ edition = "2018"
 [dependencies]
 rusb = "0.8"
 status_lights_messages = { path = "../status_lights_messages" }
+structopt = "0.3.22"
