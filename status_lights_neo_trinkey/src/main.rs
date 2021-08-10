@@ -17,14 +17,28 @@ use hal::prelude::*;
 use hal::timer::TimerCounter;
 use hal::usb::UsbBus;
 
-
 use smart_leds::{hsv::RGB8, SmartLedsWrite};
 use ws2812_timer_delay::Ws2812;
-use status_lights_messages::{DEVICE_MANUFACTURER, DEVICE_PRODUCT};
+use status_lights_messages::{DEVICE_MANUFACTURER, DEVICE_PRODUCT, Message, VersionNumber};
+
+use core::convert::TryFrom;
 
 static mut USB_ALLOCATOR: Option<UsbBusAllocator<UsbBus>> = None;
 static mut USB_BUS: Option<UsbDevice<UsbBus>> = None;
 static mut USB_SERIAL: Option<SerialPort<UsbBus>> = None;
+const NUM_LEDS: usize = 4;
+static mut LED_BACKGROUND: [RGB8; NUM_LEDS] = [
+    RGB8 { r: 0, b: 0, g: 0 },
+    RGB8 { r: 0, b: 0, g: 0 },
+    RGB8 { r: 0, b: 0, g: 0 },
+    RGB8 { r: 0, b: 0, g: 0 },
+];
+static mut LED_FOREGROUND: [RGB8; NUM_LEDS] = [
+    RGB8 { r: 0, b: 0, g: 0 },
+    RGB8 { r: 0, b: 0, g: 0 },
+    RGB8 { r: 0, b: 0, g: 0 },
+    RGB8 { r: 0, b: 0, g: 0 },
+];
 
 #[entry]
 fn main() -> ! {
@@ -48,14 +62,14 @@ fn main() -> ! {
 
     let mut delay = Delay::new(core.SYST, &mut clocks);
 
-    const NUM_LEDS: usize = 4;
-    let off = [RGB8::default(); NUM_LEDS];
-    let on = [
-        RGB8::new(5, 5, 0),
-        RGB8::new(0, 5, 5),
-        RGB8::new(5, 0, 5),
-        RGB8::new(2, 2, 2),
-    ];
+    unsafe {
+        LED_FOREGROUND = [
+            RGB8::new(5, 5, 0),
+            RGB8::new(0, 5, 5),
+            RGB8::new(5, 0, 5),
+            RGB8::new(2, 2, 2),
+        ];
+    }
 
     let bus_allocator = unsafe {
         USB_ALLOCATOR = Some(bsp::usb_allocator(
@@ -86,11 +100,19 @@ fn main() -> ! {
     }
 
     loop {
-        ws2812.write(off.iter().cloned()).unwrap();
+        unsafe { ws2812.write(LED_BACKGROUND.iter().cloned()).unwrap(); }
         delay.delay_ms(500u16);
-        ws2812.write(on.iter().cloned()).unwrap();
+        unsafe { ws2812.write(LED_FOREGROUND.iter().cloned()).unwrap(); }
         delay.delay_ms(500u16);
     }
+}
+
+fn create_version_number_response() -> Message {
+    Message::VersionResponse(VersionNumber {
+        major: env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap(),
+        minor: env!("CARGO_PKG_VERSION_MINOR").parse().unwrap(),
+        patch: env!("CARGO_PKG_VERSION_PATCH").parse().unwrap(),
+    })
 }
 
 fn poll_usb() {
@@ -98,16 +120,18 @@ fn poll_usb() {
         USB_BUS.as_mut().map(|usb_dev| {
             USB_SERIAL.as_mut().map(|serial| {
                 usb_dev.poll(&mut [serial]);
-                let mut buf = [0u8; 64];
+                let mut buf = [0u8; 8];
 
-                if let Ok(count) = serial.read(&mut buf) {
-                    for (i, c) in buf.iter().enumerate() {
-                        if i >= count {
-                            break;
+                if let Ok(_count) = serial.read(&mut buf) { // ToDo: Check count
+                    let message = Message::try_from(buf);
+                    match message {
+                        Ok(Message::VersionRequest) => {
+                            let response = create_version_number_response();
+                            serial.write(&response.to_bytes()).ok();
                         }
-                        serial.write("Received: ".as_bytes()).ok();
-                        serial.write(&[c.clone()]).ok();
-                        serial.write("\r\n".as_bytes()).ok();
+                        _ => {
+
+                        }
                     }
                 };
             });

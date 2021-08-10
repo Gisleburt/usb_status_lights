@@ -28,7 +28,7 @@ type RawMessage = [u8; 8];
 pub const DEVICE_MANUFACTURER: &str = "Gisleburt";
 pub const DEVICE_PRODUCT: &str = "Status Lights";
 
-#[cfg_attr(test, derive(PartialEq, Debug))]
+#[derive(PartialEq, Debug)]
 pub struct VersionNumber {
     pub major: u8,
     pub minor: u8,
@@ -45,7 +45,7 @@ impl VersionNumber {
     }
 }
 
-#[cfg_attr(test, derive(PartialEq, Debug))]
+#[derive(PartialEq, Debug)]
 pub struct LedColor {
     pub led: u8,
     pub red: u8,
@@ -64,7 +64,7 @@ impl LedColor {
     }
 }
 
-#[cfg_attr(test, derive(PartialEq, Debug))]
+#[derive(PartialEq, Debug)]
 pub struct LedColorTimed {
     pub led: u8,
     pub red: u8,
@@ -85,7 +85,7 @@ impl LedColorTimed {
     }
 }
 
-#[cfg_attr(test, derive(PartialEq, Debug))]
+#[derive(PartialEq, Debug)]
 #[non_exhaustive]
 pub enum Message {
     VersionRequest,

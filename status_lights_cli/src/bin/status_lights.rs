@@ -1,7 +1,7 @@
-use status_lights_cli::get_status_light_devices;
+use status_lights_cli::Client;
 
+use status_lights_messages::VersionNumber;
 use structopt::StructOpt;
-use rusb::{GlobalContext, Device};
 
 #[derive(Debug, StructOpt)]
 struct BackgroundOptions {
@@ -34,30 +34,28 @@ fn main() {
     let opt = Opt::from_args();
     println!("{:?}", opt);
 
-    let devices = get_status_light_devices();
+    let clients = Client::get_clients().unwrap();
 
     match opt {
-        Opt::List => print_devices_addresses(devices),
+        Opt::List => print_devices_addresses(clients),
         _ => {}
     }
 }
 
-fn print_devices_addresses(devices: Vec<Device<GlobalContext>>) {
-    // Get just the addresses and sort them
-    let mut addresses = devices.iter()
-        .map(|d| d.address())
-        .collect::<Vec<u8>>();
-    addresses.sort();
-
-    // Print the output
-    print!("Found {} devices", addresses.len());
-    if let Some((last, rest)) = addresses.split_last() {
-        print!(" at addresses: ");
-        for address in rest {
-            print!("{}, ", address);
-        }
-        print!("{}", last);
-    }
-    println!();
+fn format_version_number(version: &VersionNumber) -> String {
+    format!("v{}.{}.{}", version.major, version.minor, version.patch)
 }
 
+fn print_devices_addresses(mut clients: Vec<Client>) {
+    println!("Found {} devices", clients.len());
+    clients.iter_mut().for_each(|client| {
+        if let Ok(version_number) = client.request_version() {
+            println!(
+                "{}, {}, {}",
+                client.get_path(),
+                client.get_name(),
+                format_version_number(&version_number)
+            )
+        }
+    });
+}

@@ -1,3 +1,3 @@
-mod usb;
+mod serial;
 
-pub use usb::get_status_light_devices;
+pub use serial::Client;
