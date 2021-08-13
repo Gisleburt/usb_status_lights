@@ -1,5 +1,5 @@
 use serialport::{SerialPort, SerialPortType, UsbPortInfo};
-use status_lights_messages::{Message, VersionNumber, DEVICE_MANUFACTURER, DEVICE_PRODUCT};
+use status_lights_messages::{Request, VersionNumber, DEVICE_MANUFACTURER, DEVICE_PRODUCT, Response};
 use std::convert::TryFrom;
 use std::time::Duration;
 use std::io::{Write, Read};
@@ -37,8 +37,8 @@ fn is_known_device(port_info: &UsbPortInfo) -> bool {
 }
 
 impl Client {
-    pub fn get_clients() -> ClientResult<Vec<Client>> {
-        Ok(Self::get_available_devices()?
+    pub fn collect_clients() -> ClientResult<Vec<Client>> {
+        Ok(Self::collect_available_devices()?
             .into_iter()
             .filter_map(|device| Client::try_from(device).ok())
             .collect())
@@ -52,7 +52,7 @@ impl Client {
         self.device.name.as_str()
     }
 
-    fn get_available_devices() -> ClientResult<Vec<AvailableDevice>> {
+    fn collect_available_devices() -> ClientResult<Vec<AvailableDevice>> {
         let available_devices = serialport::available_ports()
             .unwrap()
             .into_iter()
@@ -72,12 +72,12 @@ impl Client {
     }
 
     pub fn request_version(&mut self) -> ClientResult<VersionNumber> {
-        let request = Message::VersionRequest;
+        let request = Request::VersionRequest;
         self.serial.write_all(&request.to_bytes()).unwrap();
         let mut buf = [0; 8];
         self.serial.read_exact(&mut buf).unwrap();
-        if let Ok(message) = Message::try_from(buf) {
-            if let Message::VersionResponse(version_number) = message {
+        if let Ok(message) = Response::try_from(buf) {
+            if let Response::VersionResponse(version_number) = message {
                 Ok(version_number)
             } else {
                 panic!("Message not a version response: {:?}", message)

@@ -34,7 +34,7 @@ fn main() {
     let opt = Opt::from_args();
     println!("{:?}", opt);
 
-    let clients = Client::get_clients().unwrap();
+    let clients = Client::collect_clients().unwrap();
 
     match opt {
         Opt::List => print_devices_addresses(clients),

@@ -19,7 +19,7 @@ use hal::usb::UsbBus;
 
 use smart_leds::{hsv::RGB8, SmartLedsWrite};
 use ws2812_timer_delay::Ws2812;
-use status_lights_messages::{DEVICE_MANUFACTURER, DEVICE_PRODUCT, Message, VersionNumber};
+use status_lights_messages::{DEVICE_PRODUCT, Request, VersionNumber, DEVICE_MANUFACTURER, Response};
 
 use core::convert::TryFrom;
 
@@ -107,8 +107,8 @@ fn main() -> ! {
     }
 }
 
-fn create_version_number_response() -> Message {
-    Message::VersionResponse(VersionNumber {
+fn create_version_number_response() -> Response {
+    Response::VersionResponse(VersionNumber {
         major: env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap(),
         minor: env!("CARGO_PKG_VERSION_MINOR").parse().unwrap(),
         patch: env!("CARGO_PKG_VERSION_PATCH").parse().unwrap(),
@@ -123,9 +123,9 @@ fn poll_usb() {
                 let mut buf = [0u8; 8];
 
                 if let Ok(_count) = serial.read(&mut buf) { // ToDo: Check count
-                    let message = Message::try_from(buf);
+                    let message = Request::try_from(buf);
                     match message {
-                        Ok(Message::VersionRequest) => {
+                        Ok(Request::VersionRequest) => {
                             let response = create_version_number_response();
                             serial.write(&response.to_bytes()).ok();
                         }
