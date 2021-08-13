@@ -149,9 +149,13 @@ fn poll_usb() {
                         }
                         Ok(Request::BackgroundRequest(led_color)) => {
                             LED_BACKGROUND[led_color.led as usize] = led_color.into();
+                            let response = Response::BackgroundResponse;
+                            serial.write(&response.to_bytes()).ok();
                         }
                         Ok(Request::ForegroundRequest(led_color_timed)) => {
                             LED_FOREGROUND[led_color_timed.led as usize] = led_color_timed.into();
+                            let response = Response::ForegroundResponse;
+                            serial.write(&response.to_bytes()).ok();
                         }
                         _ => {}
                     }
