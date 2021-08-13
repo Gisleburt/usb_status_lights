@@ -50,7 +50,7 @@ impl VersionNumber {
 }
 
 /// Represents the color of a specific led
-#[derive(PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct LedColor {
     pub led: u8,
     pub red: u8,
@@ -70,7 +70,7 @@ impl LedColor {
 }
 
 /// Represents the color of a specific led and how long it will remain that color
-#[derive(PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct LedColorTimed {
     pub led: u8,
     pub red: u8,

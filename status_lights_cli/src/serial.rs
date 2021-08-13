@@ -1,5 +1,5 @@
 use serialport::{SerialPort, SerialPortType, UsbPortInfo};
-use status_lights_messages::{Request, VersionNumber, DEVICE_MANUFACTURER, DEVICE_PRODUCT, Response};
+use status_lights_messages::{Request, VersionNumber, DEVICE_MANUFACTURER, DEVICE_PRODUCT, Response, LedColor, LedColorTimed};
 use std::convert::TryFrom;
 use std::time::Duration;
 use std::io::{Write, Read};
@@ -79,6 +79,38 @@ impl Client {
         if let Ok(message) = Response::try_from(buf) {
             if let Response::VersionResponse(version_number) = message {
                 Ok(version_number)
+            } else {
+                panic!("Message not a version response: {:?}", message)
+            }
+        } else {
+            panic!("Message unreadable")
+        }
+    }
+
+    pub fn request_background(&mut self, led_color: LedColor) -> ClientResult<()> {
+        let request = Request::BackgroundRequest(led_color);
+        self.serial.write_all(&request.to_bytes()).unwrap();
+        let mut buf = [0; 8];
+        self.serial.read_exact(&mut buf).unwrap();
+        if let Ok(message) = Response::try_from(buf) {
+            if message == Response::BackgroundResponse {
+                Ok(())
+            } else {
+                panic!("Message not a version response: {:?}", message)
+            }
+        } else {
+            panic!("Message unreadable")
+        }
+    }
+
+    pub fn request_foreground(&mut self, led_color_timed: LedColorTimed) -> ClientResult<()> {
+        let request = Request::ForegroundRequest(led_color_timed);
+        self.serial.write_all(&request.to_bytes()).unwrap();
+        let mut buf = [0; 8];
+        self.serial.read_exact(&mut buf).unwrap();
+        if let Ok(message) = Response::try_from(buf) {
+            if message == Response::ForegroundResponse {
+                Ok(())
             } else {
                 panic!("Message not a version response: {:?}", message)
             }

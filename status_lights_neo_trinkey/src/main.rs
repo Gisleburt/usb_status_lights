@@ -1,8 +1,8 @@
 #![no_std]
 #![no_main]
 
-use neo_trinkey as bsp;
 use cortex_m::peripheral::NVIC;
+use neo_trinkey as bsp;
 use panic_halt as _;
 use usb_device::bus::UsbBusAllocator;
 use usb_device::prelude::*;
@@ -18,26 +18,32 @@ use hal::timer::TimerCounter;
 use hal::usb::UsbBus;
 
 use smart_leds::{hsv::RGB8, SmartLedsWrite};
+use status_lights_messages::{
+    Request, Response, VersionNumber, DEVICE_MANUFACTURER, DEVICE_PRODUCT,
+};
 use ws2812_timer_delay::Ws2812;
-use status_lights_messages::{DEVICE_PRODUCT, Request, VersionNumber, DEVICE_MANUFACTURER, Response};
 
+use crate::led::{Color, ColorTimed};
 use core::convert::TryFrom;
+
+mod led;
 
 static mut USB_ALLOCATOR: Option<UsbBusAllocator<UsbBus>> = None;
 static mut USB_BUS: Option<UsbDevice<UsbBus>> = None;
 static mut USB_SERIAL: Option<SerialPort<UsbBus>> = None;
+const LOOP_WAIT: u32 = 500;
 const NUM_LEDS: usize = 4;
-static mut LED_BACKGROUND: [RGB8; NUM_LEDS] = [
-    RGB8 { r: 0, b: 0, g: 0 },
-    RGB8 { r: 0, b: 0, g: 0 },
-    RGB8 { r: 0, b: 0, g: 0 },
-    RGB8 { r: 0, b: 0, g: 0 },
+static mut LED_BACKGROUND: [Color; NUM_LEDS] = [
+    Color::default(),
+    Color::default(),
+    Color::default(),
+    Color::default(),
 ];
-static mut LED_FOREGROUND: [RGB8; NUM_LEDS] = [
-    RGB8 { r: 0, b: 0, g: 0 },
-    RGB8 { r: 0, b: 0, g: 0 },
-    RGB8 { r: 0, b: 0, g: 0 },
-    RGB8 { r: 0, b: 0, g: 0 },
+static mut LED_FOREGROUND: [ColorTimed; NUM_LEDS] = [
+    ColorTimed::default(),
+    ColorTimed::default(),
+    ColorTimed::default(),
+    ColorTimed::default(),
 ];
 
 #[entry]
@@ -62,15 +68,6 @@ fn main() -> ! {
 
     let mut delay = Delay::new(core.SYST, &mut clocks);
 
-    unsafe {
-        LED_FOREGROUND = [
-            RGB8::new(5, 5, 0),
-            RGB8::new(0, 5, 5),
-            RGB8::new(5, 0, 5),
-            RGB8::new(2, 2, 2),
-        ];
-    }
-
     let bus_allocator = unsafe {
         USB_ALLOCATOR = Some(bsp::usb_allocator(
             peripherals.USB,
@@ -83,9 +80,9 @@ fn main() -> ! {
     };
 
     unsafe {
-        USB_SERIAL = Some(SerialPort::new(&bus_allocator));
+        USB_SERIAL = Some(SerialPort::new(bus_allocator));
         USB_BUS = Some(
-            UsbDeviceBuilder::new(&bus_allocator, UsbVidPid(0x0, 0x0))
+            UsbDeviceBuilder::new(bus_allocator, UsbVidPid(0x0, 0x0))
                 .manufacturer(DEVICE_MANUFACTURER)
                 .product(DEVICE_PRODUCT)
                 .serial_number("Gisleburt Neo Trinkey Status Lights")
@@ -100,10 +97,30 @@ fn main() -> ! {
     }
 
     loop {
-        unsafe { ws2812.write(LED_BACKGROUND.iter().cloned()).unwrap(); }
-        delay.delay_ms(500u16);
-        unsafe { ws2812.write(LED_FOREGROUND.iter().cloned()).unwrap(); }
-        delay.delay_ms(500u16);
+        unsafe {
+            let leds = [
+                LED_FOREGROUND[0]
+                    .to_rgb()
+                    .or_else(|| LED_BACKGROUND[0].to_rgb())
+                    .unwrap_or_else(RGB8::default),
+                LED_FOREGROUND[1]
+                    .to_rgb()
+                    .or_else(|| LED_BACKGROUND[1].to_rgb())
+                    .unwrap_or_else(RGB8::default),
+                LED_FOREGROUND[2]
+                    .to_rgb()
+                    .or_else(|| LED_BACKGROUND[2].to_rgb())
+                    .unwrap_or_else(RGB8::default),
+                LED_FOREGROUND[3]
+                    .to_rgb()
+                    .or_else(|| LED_BACKGROUND[3].to_rgb())
+                    .unwrap_or_else(RGB8::default),
+            ];
+            ws2812.write(leds.iter().cloned()).unwrap();
+            LED_FOREGROUND.iter_mut().for_each(|fg| fg.reduce_time(LOOP_WAIT));
+        }
+
+        delay.delay_ms(LOOP_WAIT);
     }
 }
 
@@ -117,25 +134,30 @@ fn create_version_number_response() -> Response {
 
 fn poll_usb() {
     unsafe {
-        USB_BUS.as_mut().map(|usb_dev| {
-            USB_SERIAL.as_mut().map(|serial| {
+        if let Some(usb_dev) = USB_BUS.as_mut() {
+            if let Some(serial) = USB_SERIAL.as_mut() {
                 usb_dev.poll(&mut [serial]);
                 let mut buf = [0u8; 8];
 
-                if let Ok(_count) = serial.read(&mut buf) { // ToDo: Check count
+                if let Ok(_count) = serial.read(&mut buf) {
+                    // ToDo: Check count
                     let message = Request::try_from(buf);
                     match message {
                         Ok(Request::VersionRequest) => {
                             let response = create_version_number_response();
                             serial.write(&response.to_bytes()).ok();
                         }
-                        _ => {
-
+                        Ok(Request::BackgroundRequest(led_color)) => {
+                            LED_BACKGROUND[led_color.led as usize] = led_color.into();
                         }
+                        Ok(Request::ForegroundRequest(led_color_timed)) => {
+                            LED_FOREGROUND[led_color_timed.led as usize] = led_color_timed.into();
+                        }
+                        _ => {}
                     }
                 };
-            });
-        });
+            };
+        };
     };
 }
 
