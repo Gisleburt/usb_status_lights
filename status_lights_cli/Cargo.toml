@@ -9,3 +9,4 @@ edition = "2018"
 status_lights_messages = { path = "../status_lights_messages" }
 structopt = "0.3.22"
 serialport = "4.0.1"
+thiserror = "1.0.26"

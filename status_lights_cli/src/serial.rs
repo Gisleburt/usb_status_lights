@@ -1,12 +1,44 @@
 use serialport::{SerialPort, SerialPortType, UsbPortInfo};
-use status_lights_messages::{Request, VersionNumber, DEVICE_MANUFACTURER, DEVICE_PRODUCT, Response, LedColor, LedColorTimed};
+use status_lights_messages::{
+    LedColor, LedColorTimed, Request, Response, ResponseError, VersionNumber, DEVICE_MANUFACTURER,
+    DEVICE_PRODUCT,
+};
+use thiserror::Error;
+
 use std::convert::TryFrom;
+use std::io::{Read, Write};
 use std::time::Duration;
-use std::io::{Write, Read};
 
 const USB_TIMEOUT: Duration = Duration::from_secs(5);
 
-type ClientResult<T> = Result<T, ()>; // ToDo: Use a real error
+type ClientResult<T> = Result<T, ClientError>; // ToDo: Use a real error
+
+#[derive(Error, Debug)]
+pub enum ClientError {
+    #[error("Error Received from device")]
+    ErrorReceivedFromDevice(ResponseError),
+    #[error("No Response from device: {0}")]
+    NoResponseReceived(String),
+    #[error("Unable to write to device: {0}")]
+    DeviceWriteError(String),
+    #[error("Unable to read from device: {0}")]
+    DeviceReadError(String),
+    // ToDo: Make better use of SerialPorts error type.
+    #[error("Serial device error")]
+    GeneralSerialError,
+}
+
+impl From<ResponseError> for ClientError {
+    fn from(error: ResponseError) -> Self {
+        Self::ErrorReceivedFromDevice(error)
+    }
+}
+
+impl From<serialport::Error> for ClientError {
+    fn from(_error: serialport::Error) -> Self {
+        Self::GeneralSerialError
+    }
+}
 
 #[derive(Debug)]
 pub struct AvailableDevice {
@@ -44,8 +76,8 @@ impl Client {
             .collect())
     }
 
-    pub fn get_path(&self) -> &str {
-        self.device.path.as_str()
+    pub fn get_path(&self) -> &String {
+        &self.device.path
     }
 
     pub fn get_name(&self) -> &str {
@@ -53,8 +85,7 @@ impl Client {
     }
 
     fn collect_available_devices() -> ClientResult<Vec<AvailableDevice>> {
-        let available_devices = serialport::available_ports()
-            .unwrap()
+        let available_devices = serialport::available_ports()?
             .into_iter()
             .map(|port| (port.port_name, port.port_type))
             .filter_map(|(path, port_type)| {
@@ -71,51 +102,45 @@ impl Client {
         Ok(available_devices)
     }
 
+    fn send(&mut self, request: &Request) -> ClientResult<Response> {
+        self.serial
+            .write_all(&request.to_bytes())
+            .map_err(|_| ClientError::DeviceWriteError(self.device.path.clone()))?;
+        let mut buf = [0; 8];
+        self.serial
+            .read_exact(&mut buf)
+            .map_err(|_| ClientError::DeviceWriteError(self.device.path.clone()))?;
+        let message = Response::try_from(buf)?;
+        Ok(message)
+    }
+
     pub fn request_version(&mut self) -> ClientResult<VersionNumber> {
         let request = Request::VersionRequest;
-        self.serial.write_all(&request.to_bytes()).unwrap();
-        let mut buf = [0; 8];
-        self.serial.read_exact(&mut buf).unwrap();
-        if let Ok(message) = Response::try_from(buf) {
-            if let Response::VersionResponse(version_number) = message {
-                Ok(version_number)
-            } else {
-                panic!("Message not a version response: {:?}", message)
-            }
+        let message = self.send(&request)?;
+        if let Response::VersionResponse(version_number) = message {
+            Ok(version_number)
         } else {
-            panic!("Message unreadable")
+            panic!("Message not a version response: {:?}", message)
         }
     }
 
     pub fn request_background(&mut self, led_color: LedColor) -> ClientResult<()> {
         let request = Request::BackgroundRequest(led_color);
-        self.serial.write_all(&request.to_bytes()).unwrap();
-        let mut buf = [0; 8];
-        self.serial.read_exact(&mut buf).unwrap();
-        if let Ok(message) = Response::try_from(buf) {
-            if message == Response::BackgroundResponse {
-                Ok(())
-            } else {
-                panic!("Message not a version response: {:?}", message)
-            }
+        let message = self.send(&request)?;
+        if message == Response::BackgroundResponse {
+            Ok(())
         } else {
-            panic!("Message unreadable")
+            panic!("Message not a version response: {:?}", message)
         }
     }
 
     pub fn request_foreground(&mut self, led_color_timed: LedColorTimed) -> ClientResult<()> {
         let request = Request::ForegroundRequest(led_color_timed);
-        self.serial.write_all(&request.to_bytes()).unwrap();
-        let mut buf = [0; 8];
-        self.serial.read_exact(&mut buf).unwrap();
-        if let Ok(message) = Response::try_from(buf) {
-            if message == Response::ForegroundResponse {
-                Ok(())
-            } else {
-                panic!("Message not a version response: {:?}", message)
-            }
+        let message = self.send(&request)?;
+        if message == Response::ForegroundResponse {
+            Ok(())
         } else {
-            panic!("Message unreadable")
+            panic!("Message not a version response: {:?}", message)
         }
     }
 }

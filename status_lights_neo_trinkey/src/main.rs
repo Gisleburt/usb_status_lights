@@ -18,9 +18,7 @@ use hal::timer::TimerCounter;
 use hal::usb::UsbBus;
 
 use smart_leds::{hsv::RGB8, SmartLedsWrite};
-use status_lights_messages::{
-    Request, Response, VersionNumber, DEVICE_MANUFACTURER, DEVICE_PRODUCT,
-};
+use status_lights_messages::{Request, Response, VersionNumber, DEVICE_MANUFACTURER, DEVICE_PRODUCT, ErrorResponse};
 use ws2812_timer_delay::Ws2812;
 
 use crate::led::{Color, ColorTimed};
@@ -155,6 +153,10 @@ fn poll_usb() {
                         Ok(Request::ForegroundRequest(led_color_timed)) => {
                             LED_FOREGROUND[led_color_timed.led as usize] = led_color_timed.into();
                             let response = Response::ForegroundResponse;
+                            serial.write(&response.to_bytes()).ok();
+                        }
+                        Err(error) => {
+                            let response: Response = ErrorResponse::UnknownRequestId(error.get_id()).into();
                             serial.write(&response.to_bytes()).ok();
                         }
                         _ => {}

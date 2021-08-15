@@ -1,15 +1,15 @@
-use status_lights_cli::Client;
-
-use status_lights_messages::{VersionNumber, LedColor, LedColorTimed};
+use status_lights_cli::{Client, ClientError};
+use status_lights_messages::{LedColor, LedColorTimed, VersionNumber};
 use structopt::StructOpt;
 
-#[derive(Copy, Clone, Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt)]
 struct BackgroundOptions {
     led: u8,
     red: u8,
     green: u8,
     blue: u8,
-    device: Option<u8>,
+    #[structopt(long)]
+    device: Option<String>,
 }
 
 impl Into<LedColor> for BackgroundOptions {
@@ -23,14 +23,15 @@ impl Into<LedColor> for BackgroundOptions {
     }
 }
 
-#[derive(Copy, Clone, Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt)]
 struct ForegroundOptions {
     led: u8,
     red: u8,
     green: u8,
     blue: u8,
     seconds: Option<u8>,
-    device: Option<u8>,
+    #[structopt(long)]
+    device: Option<String>,
 }
 
 impl Into<LedColorTimed> for ForegroundOptions {
@@ -53,26 +54,73 @@ enum Opt {
     Foreground(ForegroundOptions),
 }
 
+impl Opt {
+    pub fn get_device(&self) -> Option<&String> {
+        match self {
+            Opt::List => None,
+            Opt::Background(bg) => bg.device.as_ref(),
+            Opt::Foreground(fg) => fg.device.as_ref(),
+        }
+    }
+}
+
 fn main() {
     let opt = Opt::from_args();
-    println!("{:?}", opt);
+    let device = opt.get_device();
 
-    let mut clients = Client::collect_clients().unwrap();
+    let mut clients: Vec<Client> = Client::collect_clients().unwrap()
+        .into_iter()
+        .filter(move |c| device.is_none() || Some(c.get_path()) == device)
+        .collect();
+
+    if clients.len() == 0 {
+        eprintln!("No devices found");
+        std::process::exit(-1);
+    }
 
     match opt {
         Opt::List => print_devices_addresses(clients),
         Opt::Background(background_options) => {
-            clients.iter_mut().for_each(|client| {
-                client.request_background(background_options.into()).unwrap();
-            })
+            let results = set_background(&mut clients, background_options);
+            handle_results_and_exit(results);
         }
         Opt::Foreground(foreground_options) => {
-            clients.iter_mut().for_each(|client| {
-                client.request_foreground(foreground_options.into()).unwrap();
-            })
+            let results = set_foreground(&mut clients, foreground_options);
+            handle_results_and_exit(results);
         }
-        _ => {}
     }
+}
+
+fn set_background(clients: &mut Vec<Client>, background_options: BackgroundOptions) -> Vec<Result<(), ClientError>> {
+    clients
+        .iter_mut()
+        .map(|client| {
+            println!("Changing device '{}' at '{}'", client.get_name(), client.get_path());
+            client.request_background(background_options.clone().into())
+        })
+        .collect()
+}
+
+fn set_foreground(clients: &mut Vec<Client>, foreground_options: ForegroundOptions) -> Vec<Result<(), ClientError>> {
+    clients
+        .iter_mut()
+        .map(|client| {
+            println!("Changing device '{}' at '{}'", client.get_name(), client.get_path());
+            client.request_foreground(foreground_options.clone().into())
+        })
+        .collect()
+}
+
+fn handle_results_and_exit<T>(results: Vec<Result<T, ClientError>>) {
+    results
+        .iter()
+        .for_each(|r| {
+            if let Err(e) = r.as_ref() {
+                eprintln!("Error: {:?}", e)
+            }
+        });
+
+    std::process::exit(results.len() as i32);
 }
 
 fn format_version_number(version: &VersionNumber) -> String {

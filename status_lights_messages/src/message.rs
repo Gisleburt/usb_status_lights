@@ -24,7 +24,7 @@ use core::convert::TryFrom;
 mod response;
 mod request;
 
-pub use response::{Response, ResponseError};
+pub use response::{Response, ResponseError, ErrorResponse};
 pub use request::{Request, RequestError};
 
 type RawMessage = [u8; 8];

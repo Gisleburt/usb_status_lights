@@ -2,12 +2,13 @@ use core::convert::TryFrom;
 use crate::{LedColor, LedColorTimed, Message};
 use super::RawMessage;
 
-// #[repr(u8)]
-// enum RequestId {
-//     VersionRequest = 1,
-//     BackgroundRequest = 2,
-//     ForegroundRequest = 3,
-// }
+#[repr(u8)]
+#[non_exhaustive]
+enum RequestId {
+    VersionRequest = 1,
+    BackgroundRequest = 2,
+    ForegroundRequest = 3,
+}
 
 /// A request that can be made of a usb device
 #[derive(PartialEq, Debug)]
@@ -21,9 +22,9 @@ pub enum Request {
 impl Request {
     fn get_id(&self) -> u8 {
         match self {
-            Request::VersionRequest => 1,
-            Request::BackgroundRequest { .. } => 2,
-            Request::ForegroundRequest { .. } => 3,
+            Request::VersionRequest => RequestId::VersionRequest as u8,
+            Request::BackgroundRequest { .. } => RequestId::BackgroundRequest as u8,
+            Request::ForegroundRequest { .. } => RequestId::ForegroundRequest as u8,
         }
     }
 
@@ -56,23 +57,37 @@ impl Request {
 
 /// Possible errors that might result from a potential request
 #[derive(PartialEq, Debug)]
+#[non_exhaustive]
 pub enum RequestError {
-    InvalidResponseId(u8),
+    InvalidRequest(RawMessage),
+    MalformedRequest(RawMessage),
+}
+
+impl RequestError {
+    pub fn get_id(&self) -> u8 {
+        match self {
+            RequestError::InvalidRequest(msg) => msg[0],
+            RequestError::MalformedRequest(msg) => msg[0],
+        }
+    }
 }
 
 impl TryFrom<RawMessage> for Request {
     type Error = RequestError;
 
-    fn try_from(value: RawMessage) -> Result<Self, Self::Error> {
-        match value[0] {
-            1 => Ok(Self::VersionRequest),
-            2 => Ok(Self::BackgroundRequest(LedColor::new(
-                value[1], value[2], value[3], value[4],
+    fn try_from(msg: RawMessage) -> Result<Self, Self::Error> {
+        match msg {
+            [1, 0, 0, 0, 0, 0, 0, 0] => Ok(Self::VersionRequest),
+            [1, _, _, _, _, _, _, _] => Err(RequestError::MalformedRequest(msg)),
+            [2, led, red, green, blue, 0, 0, 0] => Ok(Self::BackgroundRequest(LedColor::new(
+                led, red, green, blue,
             ))),
-            3 => Ok(Self::ForegroundRequest(LedColorTimed::new(
-                value[1], value[2], value[3], value[4], value[5],
+            [2, _, _, _, _, _, _, _] => Err(RequestError::MalformedRequest(msg)),
+            [3, led, red, green, blue, seconds, 0, 0] =>  Ok(Self::ForegroundRequest(LedColorTimed::new(
+                led, red, green, blue, seconds
             ))),
-            x => Err(RequestError::InvalidResponseId(x)),
+            [3, _, _, _, _, _, _, _] => Err(RequestError::MalformedRequest(msg)),
+            _ => Err(RequestError::InvalidRequest(msg)),
         }
     }
 }

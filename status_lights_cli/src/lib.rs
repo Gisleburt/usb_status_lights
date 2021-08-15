@@ -1,3 +1,3 @@
 mod serial;
 
-pub use serial::Client;
+pub use serial::{Client, ClientError};
