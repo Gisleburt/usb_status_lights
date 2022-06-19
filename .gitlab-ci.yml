@@ -6,6 +6,13 @@ variables:
   ARTIFACT_IMAGE: registry.gitlab.com/gisleburt-homelab/usb-status-lights
   RUST_RUNNER: registry.gitlab.com/gisleburt-homelab/rust-builder
 
+.tags: &tags
+  tags:
+  - linux
+  - arm64
+  - gisleburt
+  - homelab
+
 ##########
 # Stages #
 ##########
@@ -14,6 +21,7 @@ stages:
   - build
 
 unit-test-job:
+  <<: *tags
   stage: test
   image: $RUST_RUNNER
   script:
@@ -22,6 +30,7 @@ unit-test-job:
     - (cd status_lights_neo_trinkey && cargo test)
 
 lint-test-job: # This job also runs in the test stage.
+  <<: *tags
   stage: test    # It can run at the same time as unit-test-job (in parallel).
   image: $RUST_RUNNER
   script:
@@ -54,11 +63,7 @@ lint-test-job: # This job also runs in the test stage.
 
 build-linux-arm64:
   <<: *docker-build
-  tags:
-    - linux
-    - arm64
-    - gisleburt
-    - homelab
+  <<: *tags
   stage: build
   script:
     - docker build . -t $ARTIFACT_IMAGE
