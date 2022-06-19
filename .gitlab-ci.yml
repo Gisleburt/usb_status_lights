@@ -3,25 +3,19 @@
 #########
 variables:
   RUNNER_IMAGE: docker:20
-  ARTIFACT_IMAGE: registry.gitlab.com/gisleburt-homelab/rust-builder
+  ARTIFACT_IMAGE: registry.gitlab.com/gisleburt-homelab/usb-status-lights
+  RUST_RUNNER: registry.gitlab.com/gisleburt-homelab/rust-builder
 
 ##########
 # Stages #
 ##########
-stages: # List of stages for jobs, and their order of execution
-  - build
+stages:
   - test
-  - deploy
+  - build
 
-build-job: # This job runs in the build stage, which runs first.
-  stage: build
-  script:
-    - (cd status_lights_cli && cargo build)
-    - (cd status_lights_messages && cargo build)
-    - (cd status_lights_neo_trinkey && cargo build)
-
-unit-test-job: # This job runs in the test stage.
-  stage: test    # It only starts when the job in the build stage completes successfully.
+unit-test-job:
+  stage: test
+  image: $RUST_RUNNER
   script:
     - (cd status_lights_cli && cargo test)
     - (cd status_lights_messages && cargo test)
@@ -29,12 +23,46 @@ unit-test-job: # This job runs in the test stage.
 
 lint-test-job: # This job also runs in the test stage.
   stage: test    # It can run at the same time as unit-test-job (in parallel).
+  image: $RUST_RUNNER
   script:
     - (cd status_lights_cli && cargo clippy)
     - (cd status_lights_messages && cargo clippy)
     - (cd status_lights_neo_trinkey && cargo clippy)
 
-deploy-job: # This job runs in the deploy stage.
-  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
+
+#########
+# Build #
+#########
+.docker-build: &docker-build
+  stage: build
+  image: docker:20-dind
+  variables:
+    DOCKER_HOST: tcp://localhost:2376
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+    DOCKER_TLS_VERIFY: 1
+  services:
+    - name: docker:dind
+      command: [ "--mtu=1300" ]
+  before_script:
+    - wget google.com # test dns is working
+    - while [ ! -f /certs/client/ca.pem ]; do sleep 1; done
+    - ls -R /certs
+    - while ! docker info; do sleep 1; done
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+
+build-linux-arm64:
+  <<: *docker-build
+  tags:
+    - linux
+    - arm64
+    - gisleburt
+    - homelab
+  stage: build
   script:
-    -
+    - docker build . -t $ARTIFACT_IMAGE
+    - docker push $ARTIFACT_IMAGE
+    - RUST_VERSION=$(docker run --rm $ARTIFACT_IMAGE sh -c "rustc --version | awk '{ print \$2 }'")
+    - docker tag $ARTIFACT_IMAGE $ARTIFACT_IMAGE:$RUST_VERSION
+    - docker push $ARTIFACT_IMAGE:$RUST_VERSION
