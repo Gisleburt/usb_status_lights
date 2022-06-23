@@ -147,30 +147,4 @@ mod test {
         let message = Response::try_from(raw_message).unwrap();
         assert_eq!(message, Response::Version(VersionNumber::new(3, 4, 5)));
     }
-
-    #[test]
-    fn test_background_response_to_bytes() {
-        let message = Response::BackgroundResponse { error_code: 42 };
-        assert_eq!(message.to_bytes(), [2, 42, 0, 0, 0, 0, 0, 0]);
-    }
-
-    #[test]
-    fn test_background_response_from_bytes() {
-        let raw_message: [u8; 8] = [2, 42, 0, 0, 0, 0, 0, 0];
-        let message = Response::try_from(raw_message).unwrap();
-        assert_eq!(message, Response::BackgroundResponse { error_code: 42 });
-    }
-
-    #[test]
-    fn test_foreground_response_to_bytes() {
-        let message = Response::ForegroundResponse { error_code: 101 };
-        assert_eq!(message.to_bytes(), [3, 101, 0, 0, 0, 0, 0, 0]);
-    }
-
-    #[test]
-    fn test_foreground_response_from_bytes() {
-        let raw_message: [u8; 8] = [3, 101, 0, 0, 0, 0, 0, 0];
-        let message = Response::try_from(raw_message).unwrap();
-        assert_eq!(message, Response::ForegroundResponse { error_code: 101 });
-    }
 }
