@@ -17,7 +17,7 @@ use hal::prelude::*;
 use hal::timer::TimerCounter;
 use hal::usb::UsbBus;
 
-use smart_leds::{hsv::RGB8, SmartLedsWrite};
+use smart_leds::SmartLedsWrite;
 use status_lights_messages::{Request, Response, VersionNumber, DEVICE_MANUFACTURER, DEVICE_PRODUCT, ErrorResponse};
 use ws2812_timer_delay::Ws2812;
 
@@ -100,19 +100,19 @@ fn main() -> ! {
                 LED_FOREGROUND[0]
                     .to_rgb()
                     .or_else(|| LED_BACKGROUND[0].to_rgb())
-                    .unwrap_or_else(RGB8::default),
+                    .unwrap_or_default(),
                 LED_FOREGROUND[1]
                     .to_rgb()
                     .or_else(|| LED_BACKGROUND[1].to_rgb())
-                    .unwrap_or_else(RGB8::default),
+                    .unwrap_or_default(),
                 LED_FOREGROUND[2]
                     .to_rgb()
                     .or_else(|| LED_BACKGROUND[2].to_rgb())
-                    .unwrap_or_else(RGB8::default),
+                    .unwrap_or_default(),
                 LED_FOREGROUND[3]
                     .to_rgb()
                     .or_else(|| LED_BACKGROUND[3].to_rgb())
-                    .unwrap_or_else(RGB8::default),
+                    .unwrap_or_default(),
             ];
             ws2812.write(leds.iter().cloned()).unwrap();
             LED_FOREGROUND.iter_mut().for_each(|fg| fg.reduce_time(LOOP_WAIT));
@@ -123,7 +123,7 @@ fn main() -> ! {
 }
 
 fn create_version_number_response() -> Response {
-    Response::VersionResponse(VersionNumber {
+    Response::Version(VersionNumber {
         major: env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap(),
         minor: env!("CARGO_PKG_VERSION_MINOR").parse().unwrap(),
         patch: env!("CARGO_PKG_VERSION_PATCH").parse().unwrap(),
@@ -141,18 +141,18 @@ fn poll_usb() {
                     // ToDo: Check count
                     let message = Request::try_from(buf);
                     match message {
-                        Ok(Request::VersionRequest) => {
+                        Ok(Request::Version) => {
                             let response = create_version_number_response();
                             serial.write(&response.to_bytes()).ok();
                         }
-                        Ok(Request::BackgroundRequest(led_color)) => {
+                        Ok(Request::Background(led_color)) => {
                             LED_BACKGROUND[led_color.led as usize] = led_color.into();
-                            let response = Response::BackgroundResponse;
+                            let response = Response::Background;
                             serial.write(&response.to_bytes()).ok();
                         }
-                        Ok(Request::ForegroundRequest(led_color_timed)) => {
+                        Ok(Request::Foreground(led_color_timed)) => {
                             LED_FOREGROUND[led_color_timed.led as usize] = led_color_timed.into();
-                            let response = Response::ForegroundResponse;
+                            let response = Response::Foreground;
                             serial.write(&response.to_bytes()).ok();
                         }
                         Err(error) => {
