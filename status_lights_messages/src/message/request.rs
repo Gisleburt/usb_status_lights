@@ -1,6 +1,6 @@
-use core::convert::TryFrom;
-use crate::{LedColor, LedColorTimed, Message};
 use super::RawMessage;
+use crate::{LedColor, LedColorTimed, Message};
+use core::convert::TryFrom;
 
 #[repr(u8)]
 #[non_exhaustive]
@@ -79,12 +79,12 @@ impl TryFrom<RawMessage> for Request {
         match msg {
             [1, 0, 0, 0, 0, 0, 0, 0] => Ok(Self::Version),
             [1, _, _, _, _, _, _, _] => Err(RequestError::MalformedRequest(msg)),
-            [2, led, red, green, blue, 0, 0, 0] => Ok(Self::Background(LedColor::new(
-                led, red, green, blue,
-            ))),
+            [2, led, red, green, blue, 0, 0, 0] => {
+                Ok(Self::Background(LedColor::new(led, red, green, blue)))
+            }
             [2, _, _, _, _, _, _, _] => Err(RequestError::MalformedRequest(msg)),
-            [3, led, red, green, blue, seconds, 0, 0] =>  Ok(Self::Foreground(LedColorTimed::new(
-                led, red, green, blue, seconds
+            [3, led, red, green, blue, seconds, 0, 0] => Ok(Self::Foreground(LedColorTimed::new(
+                led, red, green, blue, seconds,
             ))),
             [3, _, _, _, _, _, _, _] => Err(RequestError::MalformedRequest(msg)),
             _ => Err(RequestError::InvalidRequest(msg)),

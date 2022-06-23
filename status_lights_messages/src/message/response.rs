@@ -1,7 +1,7 @@
 use core::convert::TryFrom;
 
-use crate::{Message, VersionNumber, RequestError};
 use super::RawMessage;
+use crate::{Message, RequestError, VersionNumber};
 
 /// A response the device can give back to the host
 #[derive(PartialEq, Debug)]
@@ -25,15 +25,31 @@ impl Response {
 
     pub fn to_bytes(&self) -> [u8; 8] {
         match self {
-            Self::ErrorResponse(error_code) => {
-                match error_code {
-                    ErrorResponse::UnknownRequestId(id) => [self.get_id(), ErrorResponseCodes::UnknownResponseId as u8, *id, 0, 0, 0, 0, 0],
-                    ErrorResponse::MalformedRequestForId(id) => [self.get_id(), ErrorResponseCodes::MalformedRequestForId as u8, *id, 0, 0, 0, 0, 0],
-                }
+            Self::ErrorResponse(error_code) => match error_code {
+                ErrorResponse::UnknownRequestId(id) => [
+                    self.get_id(),
+                    ErrorResponseCodes::UnknownResponseId as u8,
+                    *id,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
+                ErrorResponse::MalformedRequestForId(id) => [
+                    self.get_id(),
+                    ErrorResponseCodes::MalformedRequestForId as u8,
+                    *id,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
             },
             Self::Version(v) => [self.get_id(), v.major, v.minor, v.patch, 0, 0, 0, 0],
-            Self::Background => { [self.get_id(), 0, 0, 0, 0, 0, 0, 0] }
-            Self::Foreground => { [self.get_id(), 0, 0, 0, 0, 0, 0, 0] }
+            Self::Background => [self.get_id(), 0, 0, 0, 0, 0, 0, 0],
+            Self::Foreground => [self.get_id(), 0, 0, 0, 0, 0, 0, 0],
         }
     }
 }
@@ -129,10 +145,7 @@ mod test {
     fn test_version_response_from_bytes() {
         let raw_message: [u8; 8] = [1, 3, 4, 5, 0, 0, 0, 0];
         let message = Response::try_from(raw_message).unwrap();
-        assert_eq!(
-            message,
-            Response::Version(VersionNumber::new(3, 4, 5))
-        );
+        assert_eq!(message, Response::Version(VersionNumber::new(3, 4, 5)));
     }
 
     #[test]

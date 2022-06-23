@@ -21,11 +21,11 @@
 
 use core::convert::TryFrom;
 
-mod response;
 mod request;
+mod response;
 
-pub use response::{Response, ResponseError, ErrorResponse};
 pub use request::{Request, RequestError};
+pub use response::{ErrorResponse, Response, ResponseError};
 
 type RawMessage = [u8; 8];
 
@@ -90,5 +90,3 @@ impl LedColorTimed {
         }
     }
 }
-
-

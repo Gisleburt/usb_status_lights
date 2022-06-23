@@ -115,9 +115,9 @@ impl Client {
     }
 
     pub fn request_version(&mut self) -> ClientResult<VersionNumber> {
-        let request = Request::VersionRequest;
+        let request = Request::Version;
         let message = self.send(&request)?;
-        if let Response::VersionResponse(version_number) = message {
+        if let Response::Version(version_number) = message {
             Ok(version_number)
         } else {
             panic!("Message not a version response: {:?}", message)
@@ -125,9 +125,9 @@ impl Client {
     }
 
     pub fn request_background(&mut self, led_color: LedColor) -> ClientResult<()> {
-        let request = Request::BackgroundRequest(led_color);
+        let request = Request::Background(led_color);
         let message = self.send(&request)?;
-        if message == Response::BackgroundResponse {
+        if message == Response::Background {
             Ok(())
         } else {
             panic!("Message not a version response: {:?}", message)
@@ -135,9 +135,9 @@ impl Client {
     }
 
     pub fn request_foreground(&mut self, led_color_timed: LedColorTimed) -> ClientResult<()> {
-        let request = Request::ForegroundRequest(led_color_timed);
+        let request = Request::Foreground(led_color_timed);
         let message = self.send(&request)?;
-        if message == Response::ForegroundResponse {
+        if message == Response::Foreground {
             Ok(())
         } else {
             panic!("Message not a version response: {:?}", message)

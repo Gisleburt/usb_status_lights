@@ -68,7 +68,8 @@ fn main() {
     let opt = Opt::from_args();
     let device = opt.get_device();
 
-    let mut clients: Vec<Client> = Client::collect_clients().unwrap()
+    let mut clients: Vec<Client> = Client::collect_clients()
+        .unwrap()
         .into_iter()
         .filter(move |c| device.is_none() || Some(c.get_path()) == device)
         .collect();
@@ -91,34 +92,46 @@ fn main() {
     }
 }
 
-fn set_background(clients: &mut [Client], background_options: BackgroundOptions) -> Vec<Result<(), ClientError>> {
+fn set_background(
+    clients: &mut [Client],
+    background_options: BackgroundOptions,
+) -> Vec<Result<(), ClientError>> {
     clients
         .iter_mut()
         .map(|client| {
-            println!("Changing device '{}' at '{}'", client.get_name(), client.get_path());
+            println!(
+                "Changing device '{}' at '{}'",
+                client.get_name(),
+                client.get_path()
+            );
             client.request_background(background_options.clone().into())
         })
         .collect()
 }
 
-fn set_foreground(clients: &mut [Client], foreground_options: ForegroundOptions) -> Vec<Result<(), ClientError>> {
+fn set_foreground(
+    clients: &mut [Client],
+    foreground_options: ForegroundOptions,
+) -> Vec<Result<(), ClientError>> {
     clients
         .iter_mut()
         .map(|client| {
-            println!("Changing device '{}' at '{}'", client.get_name(), client.get_path());
+            println!(
+                "Changing device '{}' at '{}'",
+                client.get_name(),
+                client.get_path()
+            );
             client.request_foreground(foreground_options.clone().into())
         })
         .collect()
 }
 
 fn handle_results_and_exit<T>(results: Vec<Result<T, ClientError>>) {
-    results
-        .iter()
-        .for_each(|r| {
-            if let Err(e) = r.as_ref() {
-                eprintln!("Error: {:?}", e)
-            }
-        });
+    results.iter().for_each(|r| {
+        if let Err(e) = r.as_ref() {
+            eprintln!("Error: {:?}", e)
+        }
+    });
 
     std::process::exit(results.len() as i32);
 }
