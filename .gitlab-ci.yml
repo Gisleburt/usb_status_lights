@@ -17,26 +17,75 @@ variables:
 # Stages #
 ##########
 stages:
+  - format
+  - lint
   - test
   - build
 
-unit-test-job:
+format-cli:
+  <<: *tags
+  stage: format
+  image: $RUST_RUNNER
+  script:
+    - (cd status_lights_cli && cargo fmt --check)
+
+format-messages:
+  <<: *tags
+  stage: format
+  image: $RUST_RUNNER
+  script:
+    - (cd status_lights_messages && cargo fmt --check)
+
+format-neo-trinkey:
+  <<: *tags
+  stage: format
+  image: $RUST_RUNNER
+  script:
+    - (cd status_lights_neo_trinkey && cargo fmt --check)
+
+lint-cli:
+  <<: *tags
+  stage: lint
+  image: $RUST_RUNNER
+
+  script:
+    - (cd status_lights_cli && cargo clippy)
+
+lint-messages:
+  <<: *tags
+  stage: lint
+  image: $RUST_RUNNER
+  script:
+    - (cd status_lights_messages && cargo clippy)
+
+lint-neo-trinkey:
+  <<: *tags
+  stage: lint
+  image: $RUST_RUNNER
+  script:
+    - (cd status_lights_neo_trinkey && cargo clippy)
+
+test-cli:
   <<: *tags
   stage: test
   image: $RUST_RUNNER
   script:
     - (cd status_lights_cli && cargo test)
-    - (cd status_lights_messages && cargo test)
-    - (cd status_lights_neo_trinkey && cargo test)
 
-lint-test-job: # This job also runs in the test stage.
+test-messages:
   <<: *tags
-  stage: test    # It can run at the same time as unit-test-job (in parallel).
+  stage: test
   image: $RUST_RUNNER
   script:
-    - (cd status_lights_cli && cargo clippy)
-    - (cd status_lights_messages && cargo clippy)
-    - (cd status_lights_neo_trinkey && cargo clippy)
+    - (cd status_lights_messages && cargo test)
+
+test-neo-trinkey:
+  <<: *tags
+  stage: test
+  image: $RUST_RUNNER
+  script:
+    - (cd status_lights_neo_trinkey && cargo test)
+
 
 
 #########
@@ -65,6 +114,16 @@ build-linux-arm64:
   <<: *docker-build
   <<: *tags
   stage: build
+  needs:
+    - format-cli
+    - format-messages
+    - format-neo-trinkey
+    - lint-cli
+    - lint-messages
+    - lint-neo-trinkey
+    - test-cli
+    - test-messages
+    - test-neo-trinkey
   script:
     - docker build . -t $ARTIFACT_IMAGE
     - docker push $ARTIFACT_IMAGE
