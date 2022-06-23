@@ -12,13 +12,13 @@ struct BackgroundOptions {
     device: Option<String>,
 }
 
-impl Into<LedColor> for BackgroundOptions {
-    fn into(self) -> LedColor {
-        LedColor {
-            led: self.led,
-            red: self.red,
-            green: self.green,
-            blue: self.blue,
+impl From<BackgroundOptions> for LedColor {
+    fn from(bg: BackgroundOptions) -> Self {
+        Self {
+            led: bg.led,
+            red: bg.red,
+            green: bg.green,
+            blue: bg.blue,
         }
     }
 }
@@ -34,14 +34,14 @@ struct ForegroundOptions {
     device: Option<String>,
 }
 
-impl Into<LedColorTimed> for ForegroundOptions {
-    fn into(self) -> LedColorTimed {
-        LedColorTimed {
-            led: self.led,
-            red: self.red,
-            green: self.green,
-            blue: self.blue,
-            seconds: self.seconds.unwrap_or(0),
+impl From<ForegroundOptions> for LedColorTimed {
+    fn from(fg: ForegroundOptions) -> Self {
+        Self {
+            led: fg.led,
+            red: fg.red,
+            green: fg.green,
+            blue: fg.blue,
+            seconds: fg.seconds.unwrap_or(0),
         }
     }
 }
@@ -73,7 +73,7 @@ fn main() {
         .filter(move |c| device.is_none() || Some(c.get_path()) == device)
         .collect();
 
-    if clients.len() == 0 {
+    if clients.is_empty() {
         eprintln!("No devices found");
         std::process::exit(-1);
     }
@@ -91,7 +91,7 @@ fn main() {
     }
 }
 
-fn set_background(clients: &mut Vec<Client>, background_options: BackgroundOptions) -> Vec<Result<(), ClientError>> {
+fn set_background(clients: &mut [Client], background_options: BackgroundOptions) -> Vec<Result<(), ClientError>> {
     clients
         .iter_mut()
         .map(|client| {
@@ -101,7 +101,7 @@ fn set_background(clients: &mut Vec<Client>, background_options: BackgroundOptio
         .collect()
 }
 
-fn set_foreground(clients: &mut Vec<Client>, foreground_options: ForegroundOptions) -> Vec<Result<(), ClientError>> {
+fn set_foreground(clients: &mut [Client], foreground_options: ForegroundOptions) -> Vec<Result<(), ClientError>> {
     clients
         .iter_mut()
         .map(|client| {
