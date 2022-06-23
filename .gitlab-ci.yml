@@ -92,6 +92,8 @@ test-neo-trinkey:
   stage: test
   image: $RUST_RUNNER
   needs: []
+  before_script:
+    - rustup target add thumbv6m-none-eabi
   script:
     - (cd status_lights_neo_trinkey && cargo test)
 
