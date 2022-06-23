@@ -8,18 +8,18 @@ use super::RawMessage;
 #[non_exhaustive]
 pub enum Response {
     ErrorResponse(ErrorResponse),
-    VersionResponse(VersionNumber),
-    BackgroundResponse,
-    ForegroundResponse,
+    Version(VersionNumber),
+    Background,
+    Foreground,
 }
 
 impl Response {
     fn get_id(&self) -> u8 {
         match self {
             Self::ErrorResponse { .. } => 0,
-            Self::VersionResponse { .. } => 1,
-            Self::BackgroundResponse { .. } => 2,
-            Self::ForegroundResponse { .. } => 3,
+            Self::Version { .. } => 1,
+            Self::Background { .. } => 2,
+            Self::Foreground { .. } => 3,
         }
     }
 
@@ -31,9 +31,9 @@ impl Response {
                     ErrorResponse::MalformedRequestForId(id) => [self.get_id(), ErrorResponseCodes::MalformedRequestForId as u8, *id, 0, 0, 0, 0, 0],
                 }
             },
-            Self::VersionResponse(v) => [self.get_id(), v.major, v.minor, v.patch, 0, 0, 0, 0],
-            Self::BackgroundResponse => { [self.get_id(), 0, 0, 0, 0, 0, 0, 0] }
-            Self::ForegroundResponse => { [self.get_id(), 0, 0, 0, 0, 0, 0, 0] }
+            Self::Version(v) => [self.get_id(), v.major, v.minor, v.patch, 0, 0, 0, 0],
+            Self::Background => { [self.get_id(), 0, 0, 0, 0, 0, 0, 0] }
+            Self::Foreground => { [self.get_id(), 0, 0, 0, 0, 0, 0, 0] }
         }
     }
 }
@@ -94,11 +94,11 @@ impl TryFrom<RawMessage> for Response {
 
     fn try_from(msg: RawMessage) -> Result<Self, Self::Error> {
         match msg[0] {
-            1 => Ok(Self::VersionResponse(VersionNumber::new(msg[1], msg[2], msg[3]))),
+            1 => Ok(Self::Version(VersionNumber::new(msg[1], msg[2], msg[3]))),
 
-            2 => Ok(Self::BackgroundResponse),
+            2 => Ok(Self::Background),
 
-            3 => Ok(Self::ForegroundResponse),
+            3 => Ok(Self::Foreground),
 
             // This handles both errors returned from the device (messages starting with 0) and
             // errors from not understanding the response
@@ -107,9 +107,9 @@ impl TryFrom<RawMessage> for Response {
     }
 }
 
-impl Into<RawMessage> for Response {
-    fn into(self) -> RawMessage {
-        self.to_bytes()
+impl From<Response> for RawMessage {
+    fn from(response: Response) -> Self {
+        response.to_bytes()
     }
 }
 
@@ -121,7 +121,7 @@ mod test {
 
     #[test]
     fn test_version_response_to_bytes() {
-        let message = Response::VersionResponse(VersionNumber::new(3, 4, 5));
+        let message = Response::Version(VersionNumber::new(3, 4, 5));
         assert_eq!(message.to_bytes(), [1, 3, 4, 5, 0, 0, 0, 0]);
     }
 
@@ -131,7 +131,7 @@ mod test {
         let message = Response::try_from(raw_message).unwrap();
         assert_eq!(
             message,
-            Response::VersionResponse(VersionNumber::new(3, 4, 5))
+            Response::Version(VersionNumber::new(3, 4, 5))
         );
     }
 

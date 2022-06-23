@@ -5,33 +5,33 @@ use super::RawMessage;
 #[repr(u8)]
 #[non_exhaustive]
 enum RequestId {
-    VersionRequest = 1,
-    BackgroundRequest = 2,
-    ForegroundRequest = 3,
+    Version = 1,
+    Background = 2,
+    Foreground = 3,
 }
 
 /// A request that can be made of a usb device
 #[derive(PartialEq, Debug)]
 #[non_exhaustive]
 pub enum Request {
-    VersionRequest,
-    BackgroundRequest(LedColor),
-    ForegroundRequest(LedColorTimed),
+    Version,
+    Background(LedColor),
+    Foreground(LedColorTimed),
 }
 
 impl Request {
     fn get_id(&self) -> u8 {
         match self {
-            Request::VersionRequest => RequestId::VersionRequest as u8,
-            Request::BackgroundRequest { .. } => RequestId::BackgroundRequest as u8,
-            Request::ForegroundRequest { .. } => RequestId::ForegroundRequest as u8,
+            Request::Version => RequestId::Version as u8,
+            Request::Background { .. } => RequestId::Background as u8,
+            Request::Foreground { .. } => RequestId::Foreground as u8,
         }
     }
 
     pub fn to_bytes(&self) -> RawMessage {
         match self {
-            Self::VersionRequest => [self.get_id(), 0, 0, 0, 0, 0, 0, 0],
-            Self::BackgroundRequest(led) => [
+            Self::Version => [self.get_id(), 0, 0, 0, 0, 0, 0, 0],
+            Self::Background(led) => [
                 self.get_id(),
                 led.led,
                 led.red,
@@ -41,7 +41,7 @@ impl Request {
                 0,
                 0,
             ],
-            Self::ForegroundRequest(led) => [
+            Self::Foreground(led) => [
                 self.get_id(),
                 led.led,
                 led.red,
@@ -77,13 +77,13 @@ impl TryFrom<RawMessage> for Request {
 
     fn try_from(msg: RawMessage) -> Result<Self, Self::Error> {
         match msg {
-            [1, 0, 0, 0, 0, 0, 0, 0] => Ok(Self::VersionRequest),
+            [1, 0, 0, 0, 0, 0, 0, 0] => Ok(Self::Version),
             [1, _, _, _, _, _, _, _] => Err(RequestError::MalformedRequest(msg)),
-            [2, led, red, green, blue, 0, 0, 0] => Ok(Self::BackgroundRequest(LedColor::new(
+            [2, led, red, green, blue, 0, 0, 0] => Ok(Self::Background(LedColor::new(
                 led, red, green, blue,
             ))),
             [2, _, _, _, _, _, _, _] => Err(RequestError::MalformedRequest(msg)),
-            [3, led, red, green, blue, seconds, 0, 0] =>  Ok(Self::ForegroundRequest(LedColorTimed::new(
+            [3, led, red, green, blue, seconds, 0, 0] =>  Ok(Self::Foreground(LedColorTimed::new(
                 led, red, green, blue, seconds
             ))),
             [3, _, _, _, _, _, _, _] => Err(RequestError::MalformedRequest(msg)),
@@ -92,9 +92,9 @@ impl TryFrom<RawMessage> for Request {
     }
 }
 
-impl Into<RawMessage> for Request {
-    fn into(self) -> [u8; 8] {
-        self.to_bytes()
+impl From<Request> for RawMessage {
+    fn from(req: Request) -> Self {
+        req.to_bytes()
     }
 }
 
@@ -106,7 +106,7 @@ mod test {
 
     #[test]
     fn test_version_request_to_bytes() {
-        let message = Request::VersionRequest;
+        let message = Request::Version;
         assert_eq!(message.to_bytes(), [1, 0, 0, 0, 0, 0, 0, 0]);
     }
 
@@ -114,12 +114,12 @@ mod test {
     fn test_version_request_from_bytes() {
         let raw_message: [u8; 8] = [1, 0, 0, 0, 0, 0, 0, 0];
         let message = Request::try_from(raw_message).unwrap();
-        assert_eq!(message, Request::VersionRequest);
+        assert_eq!(message, Request::Version);
     }
 
     #[test]
     fn test_background_request_to_bytes() {
-        let message = Request::BackgroundRequest(LedColor::new(1, 255, 255, 255));
+        let message = Request::Background(LedColor::new(1, 255, 255, 255));
         assert_eq!(message.to_bytes(), [2, 1, 255, 255, 255, 0, 0, 0]);
     }
 
@@ -129,13 +129,13 @@ mod test {
         let message = Request::try_from(raw_message).unwrap();
         assert_eq!(
             message,
-            Request::BackgroundRequest(LedColor::new(1, 255, 255, 255))
+            Request::Background(LedColor::new(1, 255, 255, 255))
         );
     }
 
     #[test]
     fn test_foreground_request_to_bytes() {
-        let message = Request::ForegroundRequest(LedColorTimed::new(1, 255, 255, 255, 10));
+        let message = Request::Foreground(LedColorTimed::new(1, 255, 255, 255, 10));
         assert_eq!(message.to_bytes(), [3, 1, 255, 255, 255, 10, 0, 0]);
     }
 
@@ -145,7 +145,7 @@ mod test {
         let message = Request::try_from(raw_message).unwrap();
         assert_eq!(
             message,
-            Request::ForegroundRequest(LedColorTimed::new(1, 255, 255, 255, 10))
+            Request::Foreground(LedColorTimed::new(1, 255, 255, 255, 10))
         );
     }
 }
