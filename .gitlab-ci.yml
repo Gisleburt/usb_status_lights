@@ -26,6 +26,7 @@ format-cli:
   <<: *tags
   stage: format
   image: $RUST_RUNNER
+  needs: []
   script:
     - (cd status_lights_cli && cargo fmt --check)
 
@@ -33,6 +34,7 @@ format-messages:
   <<: *tags
   stage: format
   image: $RUST_RUNNER
+  needs: []
   script:
     - (cd status_lights_messages && cargo fmt --check)
 
@@ -40,6 +42,7 @@ format-neo-trinkey:
   <<: *tags
   stage: format
   image: $RUST_RUNNER
+  needs: []
   script:
     - (cd status_lights_neo_trinkey && cargo fmt --check)
 
@@ -47,6 +50,7 @@ lint-cli:
   <<: *tags
   stage: lint
   image: $RUST_RUNNER
+  needs: []
 
   script:
     - (cd status_lights_cli && cargo clippy)
@@ -55,6 +59,7 @@ lint-messages:
   <<: *tags
   stage: lint
   image: $RUST_RUNNER
+  needs: []
   script:
     - (cd status_lights_messages && cargo clippy)
 
@@ -62,6 +67,7 @@ lint-neo-trinkey:
   <<: *tags
   stage: lint
   image: $RUST_RUNNER
+  needs: []
   script:
     - (cd status_lights_neo_trinkey && cargo clippy)
 
@@ -69,6 +75,7 @@ test-cli:
   <<: *tags
   stage: test
   image: $RUST_RUNNER
+  needs: []
   script:
     - (cd status_lights_cli && cargo test)
 
@@ -76,6 +83,7 @@ test-messages:
   <<: *tags
   stage: test
   image: $RUST_RUNNER
+  needs: []
   script:
     - (cd status_lights_messages && cargo test)
 
@@ -83,6 +91,7 @@ test-neo-trinkey:
   <<: *tags
   stage: test
   image: $RUST_RUNNER
+  needs: []
   script:
     - (cd status_lights_neo_trinkey && cargo test)
 
