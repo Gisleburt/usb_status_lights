@@ -1,7 +1,5 @@
-.*
+**
 !status_lights_cli
-!status_lights_neo_trinkey
 !status_lights_messages
 status_lights_cli/target
-status_lights_neo_trinkey/target
 status_lights_messages/target
