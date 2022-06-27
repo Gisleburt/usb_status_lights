@@ -68,6 +68,8 @@ lint-neo-trinkey:
   stage: lint
   image: $RUST_RUNNER
   needs: []
+  before_script:
+    - rustup target add thumbv6m-none-eabi
   script:
     - (cd status_lights_neo_trinkey && cargo clippy)
 
