@@ -3,7 +3,7 @@
 #########
 variables:
   RUNNER_IMAGE: docker:20
-  ARTIFACT_IMAGE: registry.gitlab.com/gisleburt-homelab/usb-status-lights
+  ARTIFACT_IMAGE: registry.gitlab.com/gisleburt-homelab/usb_status_lights
   RUST_RUNNER: registry.gitlab.com/gisleburt-homelab/rust-builder:1.61.0.0
 
 .tags: &tags
