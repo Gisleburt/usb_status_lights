@@ -140,7 +140,6 @@ build-cli-linux-arm64-scratch-latest:
   <<: *build-cli-linux-arm64-base
   except:
     - tags
-  v
   script:
     - docker build . -t $SCRATCH_ARTIFACT_IMAGE
     - docker push $SCRATCH_ARTIFACT_IMAGE
@@ -159,7 +158,6 @@ build-cli-linux-arm64-alpine-latest:
   <<: *build-cli-linux-arm64-base
   except:
     - tags
-  v
   script:
     - docker build . -t $ALPINE_ARTIFACT_IMAGE --build-arg BASE=alpine
     - docker push $ALPINE_ARTIFACT_IMAGE
