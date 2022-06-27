@@ -123,20 +123,17 @@ test-neo-trinkey:
     - while ! docker info; do sleep 1; done
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
 
-build-linux-arm64:
+build-cli-linux-arm64:
   <<: *docker-build
   <<: *tags
   stage: build
   needs:
     - format-cli
     - format-messages
-    - format-neo-trinkey
     - lint-cli
     - lint-messages
-    - lint-neo-trinkey
     - test-cli
     - test-messages
-    - test-neo-trinkey
   script:
     - docker build . -t $ARTIFACT_IMAGE
     - docker push $ARTIFACT_IMAGE
