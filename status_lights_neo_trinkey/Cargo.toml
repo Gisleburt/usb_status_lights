@@ -15,3 +15,8 @@ smart-leds = "0.3.0"
 usb-device = "0.2"
 usbd-serial = "0.1"
 ws2812-timer-delay = { version = "0.3.0", features = ["slow"] }
+
+# Temporary fix for tests not working, fix this by making a lib and separate bin
+[[bin]]
+name = "status_lights_neo_trinkey"
+test=false
