@@ -1,6 +1,7 @@
-ARG BASE=registry.gitlab.com/gisleburt-homelab/rust-builder
+ARG BUILDER=registry.gitlab.com/gisleburt-homelab/rust-builder
+ARG BASE=scratch
 
-FROM $BASE as builder
+FROM $BUILDER as builder
 
 ARG TARGET=aarch64-unknown-linux-musl
 
@@ -11,7 +12,7 @@ COPY . .
 RUN rustup target add $TARGET
 RUN (cd status_lights_cli && cargo build --release --target=$TARGET)
 
-FROM scratch
+FROM $BASE
 
 ARG TARGET=aarch64-unknown-linux-musl
 

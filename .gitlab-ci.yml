@@ -3,7 +3,8 @@
 #########
 variables:
   RUNNER_IMAGE: docker:20
-  ARTIFACT_IMAGE: registry.gitlab.com/gisleburt-homelab/usb_status_lights
+  SCRATCH_ARTIFACT_IMAGE: registry.gitlab.com/gisleburt-homelab/usb_status_lights
+  ALPINE_ARTIFACT_IMAGE: registry.gitlab.com/gisleburt-homelab/usb_status_lights/alpine
   RUST_RUNNER: registry.gitlab.com/gisleburt-homelab/rust-builder:1.61.0.0
 
 .tags: &tags
@@ -135,20 +136,40 @@ test-neo-trinkey:
     - test-cli
     - test-messages
 
-build-cli-linux-arm64-latest:
+build-cli-linux-arm64-scratch-latest:
   <<: *build-cli-linux-arm64-base
   except:
     - tags
+  v
   script:
-    - docker build . -t $ARTIFACT_IMAGE
-    - docker push $ARTIFACT_IMAGE
+    - docker build . -t $SCRATCH_ARTIFACT_IMAGE
+    - docker push $SCRATCH_ARTIFACT_IMAGE
 
-build-cli-linux-arm64-tag:
+build-cli-linux-arm64-scratch-tag:
   <<: *build-cli-linux-arm64-base
   only:
     - tags
   script:
-    - docker build . -t $ARTIFACT_IMAGE
-    - docker push $ARTIFACT_IMAGE
-    - docker tag $ARTIFACT_IMAGE $ARTIFACT_IMAGE:$CI_COMMIT_TAG
-    - docker push $ARTIFACT_IMAGE:$CI_COMMIT_TAG
+    - docker build . -t $SCRATCH_ARTIFACT_IMAGE
+    - docker push $SCRATCH_ARTIFACT_IMAGE
+    - docker tag $SCRATCH_ARTIFACT_IMAGE $SCRATCH_ARTIFACT_IMAGE:$CI_COMMIT_TAG
+    - docker push $SCRATCH_ARTIFACT_IMAGE:$CI_COMMIT_TAG
+
+build-cli-linux-arm64-alpine-latest:
+  <<: *build-cli-linux-arm64-base
+  except:
+    - tags
+  v
+  script:
+    - docker build . -t $ALPINE_ARTIFACT_IMAGE --build-arg BASE=alpine
+    - docker push $ALPINE_ARTIFACT_IMAGE
+
+build-cli-linux-arm64-alpine-tag:
+  <<: *build-cli-linux-arm64-base
+  only:
+    - tags
+  script:
+    - docker build . -t $ALPINE_ARTIFACT_IMAGE --build-arg BASE=alpine
+    - docker push $ALPINE_ARTIFACT_IMAGE
+    - docker tag $ALPINE_ARTIFACT_IMAGE $ALPINE_ARTIFACT_IMAGE:$CI_COMMIT_TAG
+    - docker push $ALPINE_ARTIFACT_IMAGE:$CI_COMMIT_TAG
