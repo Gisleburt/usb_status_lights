@@ -50,6 +50,7 @@ impl From<ForegroundOptions> for LedColorTimed {
 #[structopt(name = "status_lights", about = "Control status lights")]
 enum Opt {
     List,
+    DebugList,
     Background(BackgroundOptions),
     Foreground(ForegroundOptions),
 }
@@ -58,6 +59,7 @@ impl Opt {
     pub fn get_device(&self) -> Option<&String> {
         match self {
             Opt::List => None,
+            Opt::DebugList => None,
             Opt::Background(bg) => bg.device.as_ref(),
             Opt::Foreground(fg) => fg.device.as_ref(),
         }
@@ -67,6 +69,21 @@ impl Opt {
 fn main() {
     let opt = Opt::from_args();
     let device = opt.get_device();
+
+    if let Opt::DebugList = opt {
+        match Client::list_all_usb_devices() {
+            Ok(devices) => {
+                println!("Currently attached USB devices:");
+                for (name, manufacturer, product) in devices {
+                    println!(" - {} -- {} -- {}", name, manufacturer, product);
+                }
+            }
+            Err(e) => {
+                panic!("{:?}", e);
+            }
+        }
+        return;
+    }
 
     let mut clients: Vec<Client> = Client::collect_clients()
         .unwrap()
@@ -81,6 +98,7 @@ fn main() {
 
     match opt {
         Opt::List => print_devices_addresses(clients),
+        Opt::DebugList => panic!("Should not be reachable"),
         Opt::Background(background_options) => {
             let results = set_background(&mut clients, background_options);
             handle_results_and_exit(results);

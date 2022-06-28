@@ -84,6 +84,24 @@ impl Client {
         self.device.name.as_str()
     }
 
+    pub fn list_all_usb_devices() -> ClientResult<Vec<(String, String, String)>> {
+        let devices = serialport::available_ports()?
+            .into_iter()
+            .map(|port| (port.port_name, port.port_type))
+            .filter_map(|(path, port_type)| {
+                if let SerialPortType::UsbPort(port_info) = port_type {
+                    if let Some(manufacturer) = port_info.manufacturer {
+                        if let Some(product) = port_info.product {
+                            return Some((path, manufacturer, product));
+                        }
+                    }
+                }
+                None
+            })
+            .collect();
+        Ok(devices)
+    }
+
     fn collect_available_devices() -> ClientResult<Vec<AvailableDevice>> {
         let available_devices = serialport::available_ports()?
             .into_iter()
