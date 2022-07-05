@@ -1,4 +1,4 @@
-use serialport::{SerialPort, SerialPortType, UsbPortInfo};
+use serialport::{SerialPort, SerialPortInfo, SerialPortType, UsbPortInfo};
 use status_lights_messages::{
     LedColor, LedColorTimed, Request, Response, ResponseError, VersionNumber, DEVICE_MANUFACTURER,
     DEVICE_PRODUCT,
@@ -47,13 +47,12 @@ pub struct AvailableDevice {
 }
 
 impl TryFrom<AvailableDevice> for Client {
-    type Error = ();
+    type Error = serialport::Error;
 
     fn try_from(device: AvailableDevice) -> Result<Self, Self::Error> {
         let serial = serialport::new(&device.path, 9600)
             .timeout(USB_TIMEOUT)
-            .open()
-            .unwrap();
+            .open()?;
         Ok(Client { serial, device })
     }
 }
@@ -84,22 +83,8 @@ impl Client {
         self.device.name.as_str()
     }
 
-    pub fn list_all_usb_devices() -> ClientResult<Vec<(String, String, String)>> {
-        let devices = serialport::available_ports()?
-            .into_iter()
-            .map(|port| (port.port_name, port.port_type))
-            .filter_map(|(path, port_type)| {
-                if let SerialPortType::UsbPort(port_info) = port_type {
-                    if let Some(manufacturer) = port_info.manufacturer {
-                        if let Some(product) = port_info.product {
-                            return Some((path, manufacturer, product));
-                        }
-                    }
-                }
-                None
-            })
-            .collect();
-        Ok(devices)
+    pub fn list_all_usb_devices() -> ClientResult<Vec<SerialPortInfo>> {
+        Ok(serialport::available_ports()?)
     }
 
     fn collect_available_devices() -> ClientResult<Vec<AvailableDevice>> {

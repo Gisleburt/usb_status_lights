@@ -74,8 +74,8 @@ fn main() {
         match Client::list_all_usb_devices() {
             Ok(devices) => {
                 println!("Currently attached USB devices:");
-                for (name, manufacturer, product) in devices {
-                    println!(" - {} -- {} -- {}", name, manufacturer, product);
+                for device in devices {
+                    println!("{:?}", device);
                 }
             }
             Err(e) => {
